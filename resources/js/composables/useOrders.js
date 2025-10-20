@@ -55,17 +55,25 @@ export function useOrders() {
         usesMockData: false,
         sourceColumnPresent: false,
         fetchedAt: null,
+        channel: null,
+        requestedChannel: null,
+        channelFallback: false,
+        dispatchedIds: [],
     });
     const completedLoading = ref(false);
     const completedError = ref(null);
 
     const dispatchedOrderIds = ref(loadPersistedDispatches());
+    const currentChannel = ref(null);
 
     const abandonedOrders = ref([]);
     const abandonedMeta = ref({
         usesMockData: false,
         sourceColumnPresent: false,
         fetchedAt: null,
+        channel: null,
+        requestedChannel: null,
+        channelFallback: false,
     });
     const abandonedLoading = ref(false);
     const abandonedError = ref(null);
@@ -78,7 +86,10 @@ export function useOrders() {
         completedError.value = null;
 
         try {
-            const response = await axios.get('/api/orders/completed');
+            const url = currentChannel.value
+                ? `/api/channels/${encodeURIComponent(currentChannel.value)}/orders/completed`
+                : '/api/orders/completed';
+            const response = await axios.get(url);
             const payload = response.data ?? {};
 
             const metaDispatched = Array.isArray(payload?.meta?.dispatchedIds)
@@ -89,12 +100,19 @@ export function useOrders() {
 
             const orders = Array.isArray(payload.data) ? payload.data : [];
 
+            const requestedChannel = payload?.meta?.requestedChannel ?? currentChannel.value;
+            const resolvedChannel = payload?.meta?.channel ?? requestedChannel ?? currentChannel.value;
+            const fallbackUsed = Boolean(payload?.meta?.channelFallback);
+
             completedOrders.value = applyDispatchOverrides(orders);
             completedMeta.value = {
                 usesMockData: Boolean(payload?.meta?.usesMockData),
                 sourceColumnPresent: Boolean(payload?.meta?.sourceColumnPresent),
                 fetchedAt: payload?.meta?.fetchedAt ?? null,
                 dispatchedIds: metaDispatched,
+                channel: resolvedChannel,
+                requestedChannel,
+                channelFallback: fallbackUsed,
             };
         } catch (error) {
             completedError.value = normalizeError(error, 'Completed orders could not be loaded.');
@@ -111,14 +129,23 @@ export function useOrders() {
         abandonedError.value = null;
 
         try {
-            const response = await axios.get('/api/orders/abandoned');
+            const url = currentChannel.value
+                ? `/api/channels/${encodeURIComponent(currentChannel.value)}/orders/abandoned`
+                : '/api/orders/abandoned';
+            const response = await axios.get(url);
             const payload = response.data ?? {};
 
             abandonedOrders.value = Array.isArray(payload.data) ? payload.data : [];
+            const requestedChannel = payload?.meta?.requestedChannel ?? currentChannel.value;
+            const resolvedChannel = payload?.meta?.channel ?? requestedChannel ?? currentChannel.value;
+            const fallbackUsed = Boolean(payload?.meta?.channelFallback);
             abandonedMeta.value = {
                 usesMockData: Boolean(payload?.meta?.usesMockData),
                 sourceColumnPresent: Boolean(payload?.meta?.sourceColumnPresent),
                 fetchedAt: payload?.meta?.fetchedAt ?? null,
+                channel: resolvedChannel,
+                requestedChannel,
+                channelFallback: fallbackUsed,
             };
         } catch (error) {
             abandonedError.value = normalizeError(error, 'Abandoned orders could not be loaded.');
@@ -127,8 +154,8 @@ export function useOrders() {
         }
     }
 
-    async function refreshAll() {
-        await Promise.all([loadCompleted({ silent: true }), loadAbandoned({ silent: true })]);
+    async function refreshAll({ silent = false } = {}) {
+        await Promise.all([loadCompleted({ silent }), loadAbandoned({ silent })]);
     }
 
     async function dispatchOrder(orderId) {
@@ -207,6 +234,18 @@ export function useOrders() {
         });
     }
 
+    function setChannel(channel) {
+        const normalized = channel ? String(channel).toLowerCase() : null;
+
+        if (currentChannel.value === normalized) {
+            return false;
+        }
+
+        currentChannel.value = normalized;
+
+        return true;
+    }
+
     return {
         completed: completedOrders,
         completedMeta,
@@ -220,5 +259,7 @@ export function useOrders() {
         loadAbandoned,
         refreshAll,
         dispatchOrder,
+        setChannel,
+        currentChannel,
     };
 }

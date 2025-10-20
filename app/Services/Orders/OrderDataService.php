@@ -6,6 +6,7 @@ use Exception;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class OrderDataService
 {
@@ -19,10 +20,15 @@ class OrderDataService
     /**
      * @return array{data: array<int, array<string, mixed>>, meta: array<string, mixed>}
      */
-    public function getCompletedOrders(): array
+    public function getCompletedOrders(?string $channel = null): array
     {
+        $context = $this->resolveChannelContext($channel);
+
         $result = $this->fetchWithFallback(
-            fn () => $this->sheetsRepository->getCompletedOrders(),
+            fn () => $this->sheetsRepository->getCompletedOrders(
+                $context['spreadsheet_id'],
+                $context['completed_range']
+            ),
             fn () => $this->mockRepository->getCompletedOrders()
         );
 
@@ -38,6 +44,9 @@ class OrderDataService
                 'sourceColumnPresent' => $result['source_column_present'],
                 'fetchedAt' => now()->toIso8601String(),
                 'dispatchedIds' => array_keys($this->dispatchStore->all()),
+                'channel' => $context['channel'],
+                'requestedChannel' => $context['requested'],
+                'channelFallback' => $context['channel'] !== ($context['requested'] ?? $context['channel']),
             ],
         ];
     }
@@ -45,10 +54,15 @@ class OrderDataService
     /**
      * @return array{data: array<int, array<string, mixed>>, meta: array<string, mixed>}
      */
-    public function getAbandonedOrders(): array
+    public function getAbandonedOrders(?string $channel = null): array
     {
+        $context = $this->resolveChannelContext($channel);
+
         $result = $this->fetchWithFallback(
-            fn () => $this->sheetsRepository->getAbandonedOrders(),
+            fn () => $this->sheetsRepository->getAbandonedOrders(
+                $context['spreadsheet_id'],
+                $context['abandoned_range']
+            ),
             fn () => $this->mockRepository->getAbandonedOrders()
         );
 
@@ -63,6 +77,9 @@ class OrderDataService
                 'usesMockData' => $result['used_fallback'],
                 'sourceColumnPresent' => $result['source_column_present'],
                 'fetchedAt' => now()->toIso8601String(),
+                'channel' => $context['channel'],
+                'requestedChannel' => $context['requested'],
+                'channelFallback' => $context['channel'] !== ($context['requested'] ?? $context['channel']),
             ],
         ];
     }
@@ -180,5 +197,53 @@ class OrderDataService
         }
 
         return null;
+    }
+
+    /**
+     * @return array{spreadsheet_id: ?string, completed_range: ?string, abandoned_range: ?string}
+     */
+    private function resolveChannelContext(?string $channel): array
+    {
+        $config = config('services.google_sheets');
+        $channels = $config['channels'] ?? [];
+        $defaultKey = strtolower($config['default_channel'] ?? 'telegram');
+
+        if (! isset($channels[$defaultKey])) {
+            $channels[$defaultKey] = [
+                'spreadsheet_id' => $config['spreadsheet_id'] ?? null,
+                'completed_range' => $config['completed_range'] ?? null,
+                'abandoned_range' => $config['abandoned_range'] ?? null,
+            ];
+        }
+
+        $requestedKey = $channel !== null ? strtolower($channel) : null;
+        $resolvedKey = $requestedKey ?? $defaultKey;
+
+        $selected = $channels[$resolvedKey] ?? null;
+
+        if (! is_array($selected) || empty($selected['spreadsheet_id'])) {
+            $resolvedKey = $defaultKey;
+            $selected = $channels[$resolvedKey] ?? null;
+        }
+
+        if (! is_array($selected) || empty($selected['spreadsheet_id'])) {
+            throw new RuntimeException('Google Sheets spreadsheet id is not configured for the default channel.');
+        }
+
+        $default = $channels[$defaultKey] ?? [];
+
+        $spreadsheetId = $selected['spreadsheet_id'] ?? $default['spreadsheet_id'] ?? null;
+
+        if (empty($spreadsheetId)) {
+            throw new RuntimeException('Google Sheets spreadsheet id is not configured for channel: '.$resolvedKey);
+        }
+
+        return [
+            'requested' => $requestedKey,
+            'channel' => $resolvedKey,
+            'spreadsheet_id' => $spreadsheetId,
+            'completed_range' => $selected['completed_range'] ?? $default['completed_range'] ?? null,
+            'abandoned_range' => $selected['abandoned_range'] ?? $default['abandoned_range'] ?? null,
+        ];
     }
 }

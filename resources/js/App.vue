@@ -17,6 +17,15 @@
                         Google Sheets erisilemedigi icin mock veriler goruntuleniyor.
                     </p>
                 </div>
+                <div
+                    v-else-if="showFallbackBanner"
+                    class="mx-6 mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3"
+                >
+                    <p class="text-sm text-amber-100">
+                        Secilen kanal icin sheet tanimlanmadigi icin tablo bos gosteriliyor. Lutfen kanal icin
+                        Google Sheets kimligi tanimlayin.
+                    </p>
+                </div>
 
                 <CompletedOrdersTable
                     v-if="activeTab === 'completed'"
@@ -45,7 +54,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import AbandonedOrdersTable from './components/AbandonedOrdersTable.vue';
 import ChannelSidebar from './components/ChannelSidebar.vue';
 import CompletedOrdersTable from './components/CompletedOrdersTable.vue';
@@ -95,12 +104,17 @@ const channelNameMap = {
 function baseChannelFilter(items, meta, channelId) {
     const label = channelNameMap[channelId] ?? channelId.toLowerCase();
     const needsSource = Boolean(meta?.sourceColumnPresent);
+    const resolvedChannel = meta?.channel ?? null;
+
+    if (resolvedChannel && resolvedChannel !== channelId) {
+        return [];
+    }
+
+    if (!needsSource) {
+        return items;
+    }
 
     return items.filter((item) => {
-        if (!needsSource) {
-            return true;
-        }
-
         const source = (item.source || '').toString().toLowerCase();
 
         if (!source) {
@@ -130,6 +144,10 @@ const showMockBanner = computed(
     () => orders.completedMeta.value.usesMockData || orders.abandonedMeta.value.usesMockData
 );
 
+const showFallbackBanner = computed(
+    () => orders.completedMeta.value.channelFallback || orders.abandonedMeta.value.channelFallback
+);
+
 const lastUpdatedAt = computed(() => {
     const times = [
         orders.completedMeta.value.fetchedAt,
@@ -148,8 +166,12 @@ const lastUpdatedAt = computed(() => {
 let refreshHandle = null;
 
 async function initialise() {
-    await Promise.all([orders.loadCompleted(), orders.loadAbandoned()]);
-    scheduleAutoRefresh();
+    orders.setChannel(selectedChannel.value);
+    orders.completed.value = [];
+    orders.abandoned.value = [];
+    orders.completedLoading.value = true;
+    orders.abandonedLoading.value = true;
+    await handleRefresh({ silent: true });
 }
 
 function scheduleAutoRefresh() {
@@ -178,7 +200,7 @@ async function handleRefresh(options = {}) {
     isRefreshing.value = true;
 
     try {
-        await orders.refreshAll();
+        await orders.refreshAll({ silent });
 
         if (!silent) {
             pushToast({
@@ -226,6 +248,31 @@ async function handleDispatch(orderId) {
     }
 }
 
-onMounted(initialise);
+async function waitForIdle() {
+    while (isRefreshing.value) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+}
+
+watch(selectedChannel, async (channel) => {
+    const changed = orders.setChannel(channel);
+
+    if (!changed) {
+        return;
+    }
+
+    orders.completed.value = [];
+    orders.abandoned.value = [];
+    orders.completedLoading.value = true;
+    orders.abandonedLoading.value = true;
+
+    await waitForIdle();
+    await handleRefresh({ silent: true });
+});
+
+onMounted(async () => {
+    await initialise();
+});
+
 onBeforeUnmount(clearAutoRefresh);
 </script>

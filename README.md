@@ -6,6 +6,7 @@ Laravel 11 + Vue 3 tabanli bu uygulama, Google Sheets uzerindeki "Completed Orde
 
 - Google Sheets API veya otomatik mock fallback ile tamamlanan ve yarim kalan siparisleri listeleme
 - Telegram / Whatsapp / Voice kanallarina gore ayristirilmis gorunum ve Completed / Abandoned sekmeleri
+- Whatsapp kanali icin ayri bir Google Spreadsheet baglantisini kullanma destegi
 - Arama, tarih araligi, odeme tipi ve durum filtreleri; tarih ve tutar siralama, 25/50/100 sayfalama secenekleri
 - "Gonderildi" butonu ile belirtilen webhook'a POST istegi, 2 deneme ile exponential backoff ve toast bildirimleri
 - Basari durumunda satir statusunun Dispatched olarak isaretlenmesi ve local dosyada saklanmasi
@@ -35,10 +36,23 @@ Laravel 11 + Vue 3 tabanli bu uygulama, Google Sheets uzerindeki "Completed Orde
 3. Google Sheets erisimi icin `.env` uzerinde asagidaki degerleri doldurun:
 
    ```env
-   GOOGLE_SHEETS_SPREADSHEET_ID=<spreadsheet_id>
-   GOOGLE_SHEETS_COMPLETED_RANGE="Completed Orders!A1:Z9999"
-   GOOGLE_SHEETS_ABANDONED_RANGE="Abandoned!A1:Z9999"
-   GOOGLE_APPLICATION_CREDENTIALS=/absolut/path/to/service_account.json
+   GOOGLE_SHEETS_DEFAULT_CHANNEL=telegram
+   GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service_account.json
+
+   # Telegram (varsayilan kanal)
+   GOOGLE_SHEETS_SPREADSHEET_ID_TELEGRAM=<TELEGRAM_SHEET_ID>
+   GOOGLE_SHEETS_TELEGRAM_COMPLETED_RANGE="Completed Orders!A1:Z9999"
+   GOOGLE_SHEETS_TELEGRAM_ABANDONED_RANGE="Abandoned!A1:Z9999"
+
+   # Whatsapp
+   GOOGLE_SHEETS_SPREADSHEET_ID_WHATSAPP=1_8eXpSO0kex3kO2Jx77EYTA8WZ7GmIB1pK4TwstsUAk
+   GOOGLE_SHEETS_WHATSAPP_COMPLETED_RANGE="Completed Orders!A1:Z9999"
+   GOOGLE_SHEETS_WHATSAPP_ABANDONED_RANGE="Abandoned!A1:Z9999"
+
+   # Voice (opsiyonel, ayarlanana kadar varsayilan kanala geri duser)
+   GOOGLE_SHEETS_SPREADSHEET_ID_VOICE=
+   GOOGLE_SHEETS_VOICE_COMPLETED_RANGE=
+   GOOGLE_SHEETS_VOICE_ABANDONED_RANGE=
 
    WEBHOOK_DISPATCH_URL="https://technai.app.n8n.cloud/webhook/dispatch-order"
    WEBHOOK_DISPATCH_CHAT_ID=7948113920

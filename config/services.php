@@ -36,17 +36,32 @@ return [
     ],
 
     'google_sheets' => [
-        'spreadsheet_id' => env('GOOGLE_SHEETS_SPREADSHEET_ID'),
-        'completed_range' => env('GOOGLE_SHEETS_COMPLETED_RANGE', 'Completed Orders!A1:Z9999'),
-        'abandoned_range' => env('GOOGLE_SHEETS_ABANDONED_RANGE', 'Abandoned!A1:Z9999'),
+        'default_channel' => env('GOOGLE_SHEETS_DEFAULT_CHANNEL', 'telegram'),
         'credentials_path' => env('GOOGLE_APPLICATION_CREDENTIALS'),
         'cache_ttl' => env('GOOGLE_SHEETS_CACHE_TTL', 55),
+        'channels' => [
+            'telegram' => [
+                'spreadsheet_id' => env('GOOGLE_SHEETS_SPREADSHEET_ID_TELEGRAM', env('GOOGLE_SHEETS_SPREADSHEET_ID')),
+                'completed_range' => env('GOOGLE_SHEETS_TELEGRAM_COMPLETED_RANGE', env('GOOGLE_SHEETS_COMPLETED_RANGE', 'Completed Orders!A1:Z9999')),
+                'abandoned_range' => env('GOOGLE_SHEETS_TELEGRAM_ABANDONED_RANGE', env('GOOGLE_SHEETS_ABANDONED_RANGE', 'Abandoned!A1:Z9999')),
+            ],
+            'whatsapp' => [
+                'spreadsheet_id' => env('GOOGLE_SHEETS_SPREADSHEET_ID_WHATSAPP'),
+                'completed_range' => env('GOOGLE_SHEETS_WHATSAPP_COMPLETED_RANGE', env('GOOGLE_SHEETS_COMPLETED_RANGE', 'Completed Orders!A1:Z9999')),
+                'abandoned_range' => env('GOOGLE_SHEETS_WHATSAPP_ABANDONED_RANGE', env('GOOGLE_SHEETS_ABANDONED_RANGE', 'Abandoned!A1:Z9999')),
+            ],
+            'voice' => [
+                'spreadsheet_id' => env('GOOGLE_SHEETS_SPREADSHEET_ID_VOICE'),
+                'completed_range' => env('GOOGLE_SHEETS_VOICE_COMPLETED_RANGE', env('GOOGLE_SHEETS_COMPLETED_RANGE', 'Completed Orders!A1:Z9999')),
+                'abandoned_range' => env('GOOGLE_SHEETS_VOICE_ABANDONED_RANGE', env('GOOGLE_SHEETS_ABANDONED_RANGE', 'Abandoned!A1:Z9999')),
+            ],
+        ],
     ],
 
     'webhooks' => [
         'dispatch' => [
             'url' => env('WEBHOOK_DISPATCH_URL'),
-            //'chat_id' => env('WEBHOOK_DISPATCH_CHAT_ID', '7948113920'),
+            'chat_id' => env('WEBHOOK_DISPATCH_CHAT_ID', '7948113920'),
         ],
     ],
 

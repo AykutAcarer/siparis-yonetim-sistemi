@@ -13,3 +13,7 @@ Route::prefix('orders')->group(function (): void {
         ->middleware('throttle:dispatches');
 });
 
+Route::prefix('channels/{channel}/orders')->group(function (): void {
+    Route::get('completed', [CompletedOrdersController::class, 'index']);
+    Route::get('abandoned', [AbandonedOrdersController::class, 'index']);
+});

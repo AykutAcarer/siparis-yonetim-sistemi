@@ -17,29 +17,35 @@ class GoogleSheetsOrderRepository
     /**
      * @return array{rows: array<int, array<string, mixed>>, headers: array<int, string>, source_column_present: bool}
      */
-    public function getCompletedOrders(): array
+    public function getCompletedOrders(?string $spreadsheetId = null, ?string $rangeOverride = null): array
     {
-        $range = config('services.google_sheets.completed_range');
+        $defaults = $this->defaultChannelConfig();
 
-        return $this->fetchRange($range);
+        $range = $rangeOverride ?? $defaults['completed_range'];
+        $spreadsheetId = $spreadsheetId ?? $defaults['spreadsheet_id'];
+
+        return $this->fetchRange($range, $spreadsheetId);
     }
 
     /**
      * @return array{rows: array<int, array<string, mixed>>, headers: array<int, string>, source_column_present: bool}
      */
-    public function getAbandonedOrders(): array
+    public function getAbandonedOrders(?string $spreadsheetId = null, ?string $rangeOverride = null): array
     {
-        $range = config('services.google_sheets.abandoned_range');
+        $defaults = $this->defaultChannelConfig();
 
-        return $this->fetchRange($range);
+        $range = $rangeOverride ?? $defaults['abandoned_range'];
+        $spreadsheetId = $spreadsheetId ?? $defaults['spreadsheet_id'];
+
+        return $this->fetchRange($range, $spreadsheetId);
     }
 
     /**
      * @return array{rows: array<int, array<string, mixed>>, headers: array<int, string>, source_column_present: bool}
      */
-    private function fetchRange(?string $range): array
+    private function fetchRange(?string $range, ?string $spreadsheetId = null): array
     {
-        $spreadsheetId = trim((string) config('services.google_sheets.spreadsheet_id'));
+        $spreadsheetId = trim((string) ($spreadsheetId ?? ''));
 
         if ($spreadsheetId === '' || $range === null || $range === '') {
             throw new RuntimeException('Google Sheets configuration is incomplete.');
@@ -48,6 +54,36 @@ class GoogleSheetsOrderRepository
         $values = $this->requestSheetValues($spreadsheetId, $range);
 
         return $this->parseValues($values);
+    }
+
+    /**
+     * @return array{spreadsheet_id: ?string, completed_range: ?string, abandoned_range: ?string}
+     */
+    private function defaultChannelConfig(): array
+    {
+        $config = config('services.google_sheets');
+        $channels = $config['channels'] ?? [];
+        $defaultKey = strtolower($config['default_channel'] ?? 'telegram');
+
+        $defaults = $channels[$defaultKey] ?? [];
+
+        if (! isset($defaults['spreadsheet_id'])) {
+            $defaults['spreadsheet_id'] = $config['spreadsheet_id'] ?? null;
+        }
+
+        if (! isset($defaults['completed_range'])) {
+            $defaults['completed_range'] = $config['completed_range'] ?? null;
+        }
+
+        if (! isset($defaults['abandoned_range'])) {
+            $defaults['abandoned_range'] = $config['abandoned_range'] ?? null;
+        }
+
+        return [
+            'spreadsheet_id' => $defaults['spreadsheet_id'] ?? null,
+            'completed_range' => $defaults['completed_range'] ?? null,
+            'abandoned_range' => $defaults['abandoned_range'] ?? null,
+        ];
     }
 
     /**
@@ -290,4 +326,3 @@ class GoogleSheetsOrderRepository
         return 'google-sheets-token-'.md5($credentialsPath);
     }
 }
-

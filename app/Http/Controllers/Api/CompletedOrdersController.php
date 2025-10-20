@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\Orders\OrderDataService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CompletedOrdersController extends Controller
 {
@@ -13,11 +14,12 @@ class CompletedOrdersController extends Controller
     ) {
     }
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $channel = $request->route('channel', $request->query('channel'));
+
         return response()->json(
-            $this->orderDataService->getCompletedOrders()
+            $this->orderDataService->getCompletedOrders($channel)
         );
     }
 }
-
