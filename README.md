@@ -36,10 +36,10 @@ Laravel 11 + Vue 3 tabanli bu uygulama, Google Sheets uzerindeki "Completed Orde
 3. Google Sheets erisimi icin `.env` uzerinde asagidaki degerleri doldurun:
 
    ```env
-   GOOGLE_SHEETS_SPREADSHEET_ID=<spreadsheet_id>
-   GOOGLE_SHEETS_COMPLETED_RANGE="Completed Orders!A1:Z9999"
-   GOOGLE_SHEETS_ABANDONED_RANGE="Abandoned!A1:Z9999"
-   GOOGLE_APPLICATION_CREDENTIALS=/absolut/path/to/service_account.json
+   GOOGLE_SHEETS_SPREADSHEET_ID=
+   GOOGLE_SHEETS_COMPLETED_RANGE=
+   GOOGLE_SHEETS_ABANDONED_RANGE=
+   GOOGLE_APPLICATION_CREDENTIALS=
 
    WEBHOOK_DISPATCH_URL=""
    WEBHOOK_DISPATCH_CHAT_ID=
